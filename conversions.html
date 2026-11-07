@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversions masse/volume complètes</title>
+<style>
+  [hidden]{display:none!important}
+  body{font-family:Arial,sans-serif;margin:0;padding:20px 10px;background:#f3f8fc;color:#1c2f5e}
+  #cahier{max-width:520px;margin:20px auto;background:#f3f8fc;border:2px solid #c9e6fa;border-radius:12px;padding:24px 32px;box-shadow:0 2px 16px #c9e6fa88}
+  #cahier.wide{max-width:980px}
+  h2{color:#2572d0;text-align:center;border-bottom:2px solid #2572d0;padding-bottom:8px;margin:0 0 18px}
+  h3{color:#2572d0;margin:26px 0 8px}
+  h4{margin:14px 0 4px;color:#295580}
+  label{display:block;color:#295580;font-weight:bold;margin-top:8px}
+  select,input,textarea{box-sizing:border-box;margin:5px 0 12px;padding:7px;width:100%;border-radius:5px;border:1px solid #9cbdea;background:#f1f7ff;font-size:1em}
+  button{margin:6px 10px 6px 0;padding:10px 16px;border-radius:5px;border:none;font-size:1em;cursor:pointer;background:#3dbb7c;color:#fff;font-weight:bold;box-shadow:0 2px 4px #2c905a35;transition:transform .12s,background .2s}
+  button:hover{transform:translateY(-2px);background:#318e5f}
+  button:active{transform:scale(.96)}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f2b911;outline-offset:2px}
+  .blue{background:#2572d0}.blue:hover{background:#114071}
+  .red{background:#f3635b}.red:hover{background:#c62d22}
+  .ghost{background:#8a97b5}.mini{padding:4px 10px;font-size:.85em;margin:0 0 0 8px}
+  #resetBtn{display:none}
+  #consigne{background:#cbe6fd;color:#195695;padding:10px 16px;border-left:6px solid #2572d0;margin:14px 0;border-radius:5px;font-size:.92em}
+  #feedback,.msg{font-weight:bold;margin-top:14px;font-size:1.05em;padding:8px 12px;border-radius:5px}
+  #feedback:empty,.msg:empty{display:none}
+  .bravo{color:#227545;background:#cdf6dd;border-left:6px solid #22a661;animation:pop .4s}
+  .erreur{color:#c11327;background:#ffd4db;border-left:6px solid #f3635b;animation:shake .35s}
+  .avert{color:#b56212;background:#fff3cf;border-left:6px solid #f2b911;animation:shake .35s}
+  @keyframes pop{50%{transform:scale(1.04)}}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  #cours{margin-top:14px;color:#432957;background:#fff1d1;padding:6px 16px 12px;border-radius:6px;border-left:6px solid #f2b911;font-size:.93em}
+  #cours h3{margin-top:8px}
+  table{border-collapse:collapse;width:100%;background:#fff}
+  td,th{border:1px solid #9cbdea;padding:6px;text-align:center;font-size:.9em}
+  th{background:#e3eefc}
+  .esc td{font-weight:bold;font-size:1em}.dep{background:#ffd27a}.arr{background:#9be3b8}
+  tr.sel{cursor:pointer}tr.sel:hover{background:#eef5ff}
+  #stats{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .chip{background:#e3eefc;border:1px solid #9cbdea;border-radius:20px;padding:5px 12px;font-size:.9em;font-weight:bold}
+  .bar{height:12px;background:#e3eefc;border:1px solid #9cbdea;border-radius:8px;overflow:hidden;margin:6px 0}
+  .bar i{display:block;height:100%;width:0;background:#f28c18;transition:width .5s}
+  .tabs{display:flex;gap:8px;margin-bottom:10px}
+  .tab{flex:1;margin:0;background:#c9d6f2;color:#1c2f5e;box-shadow:none}.tab.on{background:#2572d0;color:#fff}
+  #topbar{display:flex;justify-content:space-between;align-items:center}
+  .item{padding:6px 0;border-bottom:1px dashed #9cbdea}
+  .vert{color:#227545;font-weight:bold}.rouge{color:#c11327;font-weight:bold}
+  .tabs{flex-wrap:wrap}.chip:empty{display:none}
+  input[type=checkbox]{width:auto;margin:0 8px 0 0}label.chk{font-weight:normal}
+</style>
+</head>
+<body>
+<div id="cahier">
+  <h2>Conversions masse/volume complètes</h2>
+
+  <!-- Comptes différents -->
+  <section id="auth">
+    <div class="tabs">
+      <button class="tab on" id="tabC" onclick="modeAuth('c')">Connexion</button>
+      <button class="tab" id="tabN" onclick="modeAuth('n')">Créer un compte</button>
+    </div>
+    <label>Identifiant<input type="text" id="aid" autocomplete="username"></label>
+    <label>Mot de passe<input type="password" id="apw" autocomplete="current-password"></label>
+    <div id="roleBox" hidden>
+      <label>Je suis
+        <select id="arole" onchange="$('codeBox').hidden=this.value==='eleve'">
+          <option value="eleve">un élève</option><option value="prof">le professeur</option><option value="owner">le propriétaire</option>
+        </select>
+      </label>
+      <label id="codeBox" hidden>Code d'accès<input type="password" id="acode"></label>
+    </div>
+    <button id="authBtn" onclick="authGo()">Se connecter</button>
+    <div id="authMsg" class="msg"></div>
+  </section>
+
+  <div id="topbar" hidden>
+    <span>👤 <b id="who"></b> <small id="sync"></small></span>
+    <button class="ghost" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <div id="annonce" hidden style="background:#fff3cf;border-left:6px solid #f2b911;padding:8px 12px;border-radius:5px;margin:10px 0"></div>
+
+  <!-- Espace élève -->
+  <section id="app" hidden>
+    <div id="stats"></div>
+
+    <h3>📅 Calcul quotidien</h3>
+    <div class="bar"><i id="dbar"></i></div>
+    <button class="blue" id="dailyBtn" onclick="lancerQuotidien()">Calcul quotidien</button>
+
+    <h3>🧮 Exercice</h3>
+    <div id="consigne">
+      <b>Consigne :</b> Lance le <b>mode entraînement</b> ou le <b>calcul quotidien</b>, puis convertis la valeur donnée.
+      <br>• <b>Masse :</b> tonne (t), kg, hg, dag, g, dg, cg, mg, µg
+      <br>• <b>Volumes géométriques :</b> m³, dm³, cm³, mm³
+      <br>• <b>Capacités :</b> hL, daL, L, dL, cL, mL
+    </div>
+    <label>Valeur à convertir<input type="number" id="valeur" step="any"></label>
+    <label>Unité de départ<select id="uniteDepart"></select></label>
+    <label>Unité d'arrivée<select id="uniteArrivee"></select></label>
+    <label>Ton résultat<input type="number" id="reponse" step="any" disabled></label>
+    <button id="btnValider" onclick="verifier()" disabled>Valider</button>
+    <button class="blue" onclick="proposeExercice()">🏋️ Mode entraînement</button>
+    <button class="red" id="resetBtn" onclick="suivant()">Exercice suivant ▶</button>
+    <div id="feedback"></div>
+    <div id="cours" hidden></div>
+
+    <h3>🧠 Ma mémoire : erreurs à revoir</h3>
+    <div id="memo"></div>
+
+    <h3>📤 Envoyer mes réponses au prof</h3>
+    <label>Destinataire<select id="envTo"></select></label>
+    <button class="blue" onclick="envoyerMsg()">✉️ Envoyer mes réponses par messagerie</button>
+    <label>Email du professeur (facultatif)<input type="email" id="emailEleve" placeholder="prof@ecole.fr"></label>
+    <button class="ghost" onclick="envoyer()">Par email</button>
+    <div id="envMsg" class="msg"></div>
+  </section>
+
+  <!-- Espace professeur : base de données en temps réel -->
+  <section id="prof" hidden>
+    <h3>📊 Tableau de bord <small id="maj"></small></h3>
+    <p>Mis à jour en direct. Clique sur un élève pour voir ses réponses.</p>
+    <div style="overflow-x:auto"><table id="tabEleves"></table></div>
+    <div id="detail"></div>
+    <label>Ton email (proposé aux élèves)<input type="email" id="emailProf" onchange="mut(()=>{db.emailProf=this.value.trim()})"></label>
+    <button class="blue" onclick="exportCSV()">Exporter en CSV</button>
+  </section>
+
+  <!-- Espace propriétaire : gère tout -->
+  <section id="owner" hidden>
+    <h3>👑 Espace propriétaire</h3>
+    <div id="oStats" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div class="tabs" style="margin-top:12px">
+      <button class="tab on" data-t="comptes" onclick="oTab('comptes')">Comptes</button>
+      <button class="tab" data-t="reglages" onclick="oTab('reglages')">Réglages</button>
+      <button class="tab" data-t="stats" onclick="oTab('stats')">Statistiques</button>
+      <button class="tab" data-t="base" onclick="oTab('base')">Base & journal</button>
+    </div>
+    <div id="oMsg" class="msg"></div>
+
+    <div class="otab" id="t-comptes">
+      <h4>👥 Comptes</h4>
+      <input id="oSearch" placeholder="🔎 Rechercher un compte" oninput="renderOwner()">
+      <div style="overflow-x:auto"><table id="oUsers"></table></div>
+      <div id="oDetail"></div>
+      <h4>Créer un compte</h4>
+      <input id="oId" placeholder="Identifiant"><input id="oPw" placeholder="Mot de passe">
+      <select id="oRole"><option value="eleve">Élève</option><option value="prof">Professeur</option><option value="owner">Propriétaire</option></select>
+      <button onclick="rep(actAdd($('oId').value.trim(),$('oPw').value,$('oRole').value))">Créer le compte</button>
+      <h4>⌨️ Commandes admin</h4>
+      <button class="ghost" onclick="cmd('accounts')">📋 Liste des comptes et codes</button>
+      <button class="ghost" onclick="cmd('help')">❓ Toutes les commandes</button>
+      <input id="cmdIn" placeholder="Tape help puis Entrée">
+      <button class="blue" onclick="cmd()">Exécuter</button>
+      <pre id="cmdOut" style="background:#1c2f5e;color:#cdf6dd;padding:10px;border-radius:6px;white-space:pre-wrap;max-height:220px;overflow:auto;font-size:.85em">Tape help pour voir les commandes.</pre>
+    </div>
+
+    <div class="otab" id="t-reglages" hidden>
+      <h4>🎯 Exercices des élèves</h4>
+      <label>Exercices du calcul quotidien<input type="number" id="sNbQ" min="1" max="20"></label>
+      <label>Essais par exercice<input type="number" id="sEss" min="1" max="5"></label>
+      <label>Valeur maximale générée<input type="number" id="sMax" min="1"></label>
+      <label class="chk"><input type="checkbox" id="sMasse">Exercices de masse</label>
+      <label class="chk"><input type="checkbox" id="sVol">Exercices de volume / capacité</label>
+      <label class="chk"><input type="checkbox" id="sLibre">Mode libre : l'élève peut choisir lui-même valeur et unités</label>
+      <h4>🚪 Accès</h4>
+      <label class="chk"><input type="checkbox" id="sInscr">Inscriptions des élèves ouvertes</label>
+      <label class="chk"><input type="checkbox" id="sMaint">Mode maintenance (élèves bloqués)</label>
+      <label>Annonce affichée à tout le monde<input id="sAnn" placeholder="Ex : contrôle jeudi !"></label>
+      <h4>🔐 Codes d'accès</h4>
+      <label>Code professeur<input id="oCodeProf"></label>
+      <label>Code propriétaire<input id="oCodeOwner"></label>
+      <button onclick="saveSettings()">Enregistrer les réglages</button>
+    </div>
+
+    <div class="otab" id="t-stats" hidden>
+      <h4>🏆 Classement des élèves</h4><div style="overflow-x:auto"><table id="oRank"></table></div>
+      <h4>⚠️ Conversions les plus ratées</h4><div style="overflow-x:auto"><table id="oErr"></table></div>
+      <h4>📈 Activité des 7 derniers jours</h4><table id="oAct"></table>
+      <h4>🕒 Dernières réponses</h4><div style="overflow-x:auto"><table id="oLast"></table></div>
+    </div>
+
+    <div class="otab" id="t-base" hidden>
+      <h4>🗄️ Base de données</h4>
+      <button class="blue" onclick="exportJSON()">Exporter (JSON)</button>
+      <button class="blue" onclick="exportCSV()">Exporter (CSV)</button>
+      <button class="red" onclick="if(confirm('Effacer toutes les réponses et remettre les scores à zéro ?'))rep(actPurge())">Vider les réponses</button>
+      <button class="red" onclick="if(confirm('Supprimer tous les comptes sauf les propriétaires ?'))rep(actWipe())">Supprimer élèves et profs</button>
+      <button class="red" onclick="if(confirm('Supprimer tous les messages ?'))rep(actClear('messages'))">Vider la messagerie</button>
+      <h4>📜 Journal d'activité</h4>
+      <button class="red" onclick="if(confirm('Vider le journal ?'))rep(actClear('logs'))">Vider le journal</button>
+      <div style="overflow-x:auto"><table id="oLog"></table></div>
+    </div>
+  </section>
+
+  <!-- Messagerie (tous les rôles) -->
+  <section id="msgBox" hidden>
+    <h3>✉️ Messagerie <span class="chip" id="msgBadge"></span></h3>
+    <div id="msgList"></div>
+    <h4>Nouveau message</h4>
+    <select id="mTo"></select>
+    <input id="mSub" placeholder="Objet">
+    <textarea id="mBody" rows="3" placeholder="Ton message"></textarea>
+    <button onclick="sendMsg()">Envoyer</button>
+    <div id="mMsg" class="msg"></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const KEY = "convDB_v2";
+const NBQ = () => Math.max(1, +db.settings.nbQuotidien || 5);
+
+let CACHE = vide();
+let db = load(), user = null, isProf = false, isOwner = false, modeA = 'c', sel = null;
+let tentative = 0, bonneReponse = 0, fini = false, t0 = Date.now(), cur = {q:false, idx:-1};
+
+/* ---------- Unités (inchangé) ---------- */
+const unitesMasse = [
+  {value:"t",label:"tonne (t)"},{value:"kg",label:"kilogramme (kg)"},{value:"hg",label:"hectogramme (hg)"},
+  {value:"dag",label:"décagramme (dag)"},{value:"g",label:"gramme (g)"},{value:"dg",label:"décigramme (dg)"},
+  {value:"cg",label:"centigramme (cg)"},{value:"mg",label:"milligramme (mg)"},{value:"µg",label:"microgramme (µg)"}];
+const unitesVolumeCube = [
+  {value:"m3",label:"mètre cube (m³)"},{value:"dm3",label:"décimètre cube (dm³)"},
+  {value:"cm3",label:"centimètre cube (cm³)"},{value:"mm3",label:"millimètre cube (mm³)"}];
+const unitesCapacite = [
+  {value:"hL",label:"hectolitre (hL)"},{value:"daL",label:"décalitre (daL)"},{value:"L",label:"litre (L)"},
+  {value:"dL",label:"décilitre (dL)"},{value:"cL",label:"centilitre (cL)"},{value:"mL",label:"millilitre (mL)"}];
+const facteursMasse_µg = {t:1e12,kg:1e9,hg:1e8,dag:1e7,g:1e6,dg:1e5,cg:1e4,mg:1e3,µg:1};
+const facteursCube_mm3 = {m3:1e9,dm3:1e6,cm3:1e3,mm3:1};
+const facteursCapacite_mL = {hL:1e5,daL:1e4,L:1e3,dL:100,cL:10,mL:1};
+const ordres = {masse:["t","kg","hg","dag","g","dg","cg","mg","µg"], cube:["m3","dm3","cm3","mm3"], capacite:["hL","daL","L","dL","cL","mL"]};
+const sym = u => u.replace("3","³");
+
+function remplirListes() {
+  [$('uniteDepart'), $('uniteArrivee')].forEach(s => {
+    s.innerHTML = '';
+    [["Masse (t à µg)",unitesMasse],["Volumes géométriques (m³ à mm³)",unitesVolumeCube],["Capacités (hL à mL)",unitesCapacite]].forEach(([nom,liste]) => {
+      const g = document.createElement('optgroup'); g.label = nom;
+      liste.forEach(u => { const o = document.createElement('option'); o.value = u.value; o.textContent = u.label; g.appendChild(o); });
+      s.appendChild(g);
+    });
+  });
+}
+function familleUnite(u) {
+  if (u in facteursMasse_µg) return "masse";
+  if (u in facteursCube_mm3) return "cube";
+  if (u in facteursCapacite_mL) return "capacite";
+  return "inconnu";
+}
+function conversion(valeur, depart, arrivee) {
+  const fd = familleUnite(depart), fa = familleUnite(arrivee);
+  if (fd === fa) {
+    if (fd === "masse") return valeur * facteursMasse_µg[depart] / facteursMasse_µg[arrivee];
+    if (fd === "cube") return valeur * facteursCube_mm3[depart] / facteursCube_mm3[arrivee];
+    if (fd === "capacite") return valeur * facteursCapacite_mL[depart] / facteursCapacite_mL[arrivee];
+  }
+  if (fd === "cube" && fa === "capacite") {
+    const enDm3 = valeur * (facteursCube_mm3[depart] / facteursCube_mm3["dm3"]);
+    return enDm3 * facteursCapacite_mL["L"] / facteursCapacite_mL[arrivee];
+  }
+  if (fd === "capacite" && fa === "cube") {
+    const enDm3 = valeur * facteursCapacite_mL[depart] / facteursCapacite_mL["L"];
+    return enDm3 * facteursCube_mm3["dm3"] / facteursCube_mm3[arrivee];
+  }
+  return NaN;
+}
+const fmt = x => Number(Number(x).toPrecision(12)).toLocaleString('en-US',{useGrouping:false,maximumFractionDigits:20});
+
+/* ---------- Base de données (mémoire du navigateur) ---------- */
+function newProg(){return {ok:0,ko:0,serie:0,meilleure:0,jours:0,dernierJour:"",qDate:"",qRes:[],dernier:null}}
+/* ---------- Base de données partagée : Supabase ---------- */
+// >>> À REMPLIR (Supabase > Project Settings > API) <<<
+const SUPABASE_URL = "https://awywymfpxqjqqwwiuufx.supabase.co";      // ex : https://abcdxyz.supabase.co
+const SUPABASE_KEY = "sb_publishable_adDWhyKUHL4-Y_IDss04TQ_TDmeFDJu";   // clé « anon public » (jamais la clé service_role)
+const sb = (window.supabase && !SUPABASE_URL.startsWith("COLLE")) ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+function setDef(){ return {nbQuotidien:5, essais:2, valMax:100, masse:true, volume:true, libre:false, inscription:true, maintenance:false, annonce:""}; }
+const SEP = "\u0001", TBL = 'conv_rows';
+let pending = 0, pushSeq = 0, pulling = false, queue = Promise.resolve();
+
+function vide(){ return {users:{}, answers:[], prog:{}, envois:[], messages:[], logs:[], emailProf:"", codes:{prof:"", owner:""}, settings:setDef()}; }
+function load(){ return CACHE; }
+function etat(ok, e){ const el = $('sync'); if (el) { el.textContent = ok ? "🟢 synchronisé" : "🔴 hors ligne"; el.title = e || ""; } }
+function cyrb128(str){
+  let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+  for (let i = 0, k; i < str.length; i++) { k = str.charCodeAt(i); h1 = h2 ^ Math.imul(h1 ^ k, 597399067); h2 = h3 ^ Math.imul(h2 ^ k, 2869860233); h3 = h4 ^ Math.imul(h3 ^ k, 951274213); h4 = h1 ^ Math.imul(h4 ^ k, 2716044179); }
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067); h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233); h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213); h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  h1 ^= (h2 ^ h3 ^ h4); h2 ^= h1; h3 ^= h1; h4 ^= h1; return [h1 >>> 0, h2 >>> 0, h3 >>> 0, h4 >>> 0];
+}
+// L'identifiant (n'importe quels caractères) devient une adresse technique pour Supabase Auth
+const emailDe = id => cyrb128("conv:" + id).map(n => n.toString(16).padStart(8, "0")).join("") + "@conversions.app";
+const mdp = pw => "c0nv:" + pw;     // Supabase impose 6 caractères minimum : on ajoute un préfixe invisible
+const traduire = t => /duplicate key/i.test(t) ? "Cet identifiant existe déjà." : /déjà un profil/.test(t) ? "Ce compte existe déjà : utilise « Connexion »." : t;
+
+function flat(d){
+  const m = new Map(), put = (c, i, v) => m.set(c + SEP + i, JSON.stringify(v)), r = (d.users[user] || {}).role;
+  Object.entries(d.users).forEach(([i, v]) => put('users', i, v));
+  Object.entries(d.prog).forEach(([i, v]) => put('prog', i, Object.assign({u:i}, v)));
+  d.answers.forEach(a => put('answers', a.u + '|' + a.t, a));
+  d.messages.forEach(a => put('messages', a.id, a));
+  d.logs.forEach(a => { a.k = a.k || Date.now() + Math.random().toString(36).slice(2, 6); put('logs', a.k, a); });
+  d.envois.forEach(a => put('envois', a.u + '|' + a.t, a));
+  if (r === 'owner') { put('cfg', 'settings', d.settings); put('cfg', 'codes', d.codes); }
+  if (r === 'owner' || r === 'prof') put('cfg', 'emailProf', {v:d.emailProf});
+  return m;
+}
+// mut : modifie la copie locale tout de suite, puis envoie seulement les lignes changées à Supabase
+function mut(fn){
+  db = CACHE; const a = flat(db); fn(); const b = flat(db), up = [], del = {};
+  b.forEach((v, k) => { if (a.get(k) !== v) { const [c, i] = k.split(SEP); up.push({coll:c, id:i, data:JSON.parse(v), updated_at:new Date().toISOString()}); } });
+  a.forEach((v, k) => { if (!b.has(k)) { const [c, i] = k.split(SEP); (del[c] = del[c] || []).push(i); } });
+  if (sb && (up.length || Object.keys(del).length)) envoyerSync(up, del, b);
+}
+function envoyerSync(up, del, apres){
+  pending++; pushSeq++;
+  queue = queue.then(async () => {
+    try {
+      for (let i = 0; i < up.length; i += 200) { const {error} = await sb.from(TBL).upsert(up.slice(i, i + 200)); if (error) throw error; }
+      for (const c in del) {
+        const ids = del[c], reste = [...apres.keys()].some(k => k.startsWith(c + SEP));
+        if (!reste && ids.length > 100) { const {error} = await sb.from(TBL).delete().eq('coll', c); if (error) throw error; }
+        else for (let i = 0; i < ids.length; i += 100) { const {error} = await sb.from(TBL).delete().eq('coll', c).in('id', ids.slice(i, i + 100)); if (error) throw error; }
+      }
+      etat(true);
+    } catch (e) { etat(false, e.message); }
+    finally { pending--; pushSeq++; }
+  });
+}
+function construire(rows){
+  const d = vide();
+  rows.forEach(({coll, id, data}) => {
+    if (coll === 'users') d.users[id] = data; else if (coll === 'prog') d.prog[id] = data;
+    else if (coll === 'answers') d.answers.push(data); else if (coll === 'messages') d.messages.push(data);
+    else if (coll === 'logs') d.logs.push(data); else if (coll === 'envois') d.envois.push(data);
+    else if (coll === 'cfg') { if (id === 'settings') d.settings = Object.assign(setDef(), data); else if (id === 'codes') d.codes = data; else if (id === 'emailProf') d.emailProf = data.v || ''; }
+  });
+  ['answers', 'messages', 'logs', 'envois'].forEach(k => d[k].sort((x, y) => x.t - y.t));
+  return d;
+}
+async function pull(force){
+  if (!sb || (!user && !force)) return false;
+  while (pulling) { if (!force) return false; await new Promise(r => setTimeout(r, 60)); }
+  pulling = true; const s = pushSeq;
+  try {
+    const all = [];
+    for (let from = 0; ; from += 1000) {
+      const {data, error} = await sb.from(TBL).select('coll,id,data').order('coll').order('id').range(from, from + 999);
+      if (error) throw error; all.push(...data); if (data.length < 1000) break;
+    }
+    if (s !== pushSeq || pending > 0 || (!user && !force)) return false;
+    CACHE = construire(all); db = CACHE; etat(true); return true;
+  } catch (e) { etat(false, e.message); return false; }
+  finally { pulling = false; }
+}
+const jour = () => new Date().toLocaleDateString('sv');
+const hier = () => new Date(Date.now() - 864e5).toLocaleDateString('sv');
+function hash(s){ let x = 5381; for (const c of s) x = (x * 33) ^ c.charCodeAt(0); return (x >>> 0).toString(36); }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const msg = (el, t, c) => { el.textContent = t; el.className = c; };
+
+/* ---------- Comptes ---------- */
+function modeAuth(m){
+  modeA = m;
+  $('tabC').classList.toggle('on', m==='c'); $('tabN').classList.toggle('on', m==='n');
+  $('roleBox').hidden = m==='c'; $('authBtn').textContent = m==='c' ? 'Se connecter' : 'Créer mon compte';
+  $('authMsg').textContent = ''; $('authMsg').className = 'msg';
+}
+async function authGo(){
+  const id = $('aid').value.trim(), pw = $('apw').value, m = $('authMsg');
+  if (!sb) return msg(m, "Supabase n'est pas configuré : renseigne SUPABASE_URL et SUPABASE_KEY au début du script.", "erreur");
+  if (!id) return msg(m, "Entre un identifiant.", "erreur");
+  if (RESERVES.includes(id)) return msg(m, "Cet identifiant est réservé.", "erreur");
+  if (!pw) return msg(m, "Entre un mot de passe.", "erreur");
+  $('authBtn').disabled = true; msg(m, "Connexion…", "avert");
+  try {
+    const email = emailDe(id), password = mdp(pw); let r;
+    if (modeA === 'n') {
+      r = await sb.auth.signUp({email, password});
+      if (r.error && /registered|already/i.test(r.error.message)) { r = await sb.auth.signInWithPassword({email, password}); if (r.error) throw new Error("Cet identifiant existe déjà."); }
+      else if (r.error) throw r.error;
+      if (!r.data.session) throw new Error("Désactive « Confirm email » dans Supabase (Authentication → Providers → Email).");
+      const role = $('arole').value, {error} = await sb.rpc('creer_profil', {p_id:id, p_role:role, p_code:role === 'eleve' ? '' : $('acode').value});
+      if (error) { await sb.auth.signOut(); throw error; }
+    } else {
+      r = await sb.auth.signInWithPassword({email, password});
+      if (r.error) throw new Error("Identifiant ou mot de passe incorrect.");
+    }
+    await ouvrirSession(r.data.session.user.id);
+  } catch (e) { msg(m, traduire(e.message || String(e)), "erreur"); }
+  $('authBtn').disabled = false;
+}
+async function ouvrirSession(uid){
+  await pull(true);
+  const id = Object.keys(db.users).find(k => db.users[k].uid === uid);
+  if (!id) { await sb.auth.signOut(); return msg($('authMsg'), "Profil introuvable ou compte bloqué.", "erreur"); }
+  if (db.settings.maintenance && db.users[id].role === 'eleve') { await sb.auth.signOut(); return msg($('authMsg'), "Le site est en maintenance, reviens plus tard.", "erreur"); }
+  connecter(id);
+}
+function connecter(id){
+  db = load(); user = id; try { sessionStorage.setItem("convUser", id); } catch(e) {}
+  isProf = db.users[id].role === 'prof'; isOwner = db.users[id].role === 'owner';
+  $('auth').hidden = true; $('topbar').hidden = false; $('who').textContent = id + (isProf ? " (prof)" : isOwner ? " (propriétaire)" : "");
+  $('app').hidden = isProf || isOwner; $('prof').hidden = !isProf; $('owner').hidden = !isOwner;
+  $('cahier').classList.toggle('wide', isProf || isOwner);
+  $('msgBox').hidden = false; fillTo(); renderMsgs(); majBandeau(); journal("connexion");
+  if (isOwner) { renderOwner(); chargerReglages(); return; }
+  if (isProf) { $('emailProf').value = db.emailProf; renderProf(); return; }
+  if (!db.prog[id]) mut(() => { db.prog[id] = newProg(); });
+  $('emailEleve').value = db.emailProf;
+  appliquerMode(); setActif(db.settings.libre); fini = true; t0 = Date.now();
+  msg($('feedback'), "Choisis un mode : 🏋️ entraînement ou 📅 calcul quotidien.", "avert");
+  renderAll();
+}
+function logout(){
+  if (user) journal("déconnexion");
+  try { sessionStorage.removeItem("convUser"); } catch(e) {} user = null; isProf = false; isOwner = false; $("cahier").classList.remove("wide"); queue = queue.then(() => sb && sb.auth.signOut()); CACHE = vide(); db = CACHE;
+  ['app','prof','owner','topbar','msgBox','annonce'].forEach(i => $(i).hidden = true); $('auth').hidden = false; $('apw').value = '';
+}
+
+/* ---------- Exercices ---------- */
+function graine(s){
+  let h = 1779033703 ^ s.length;
+  for (let i = 0; i < s.length; i++) { h = Math.imul(h ^ s.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; }
+  return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
+}
+function gen(rnd){
+  const S = db.settings, fams = [];
+  if (S.masse) fams.push(unitesMasse);
+  if (S.volume) fams.push(unitesVolumeCube.concat(unitesCapacite));
+  if (!fams.length) fams.push(unitesMasse);
+  const L = fams[Math.floor(rnd() * fams.length)];
+  const i = Math.floor(rnd() * L.length); let j;
+  do { j = Math.floor(rnd() * L.length); } while (j === i);
+  return {v: Math.round((rnd() * (Math.max(1, db.settings.valMax) - .01) + .01) * 100) / 100, d: L[i].value, a: L[j].value};
+}
+function razFeedback(){
+  $('feedback').textContent = ''; $('feedback').className = ''; $('cours').hidden = true; $('resetBtn').style.display = 'none';
+}
+function setExo(e, q=false, idx=-1){
+  cur = {q, idx}; tentative = 0; fini = false; t0 = Date.now();
+  $('valeur').value = e.v; $('uniteDepart').value = e.d; $('uniteArrivee').value = e.a; $('reponse').value = '';
+  setActif(true); razFeedback(); $('reponse').focus();
+}
+function proposeExercice(){ db = load(); setExo(gen(Math.random)); }
+function suivant(){ if (cur.q) lancerQuotidien(); else proposeExercice(); }
+function remiseAZero(){
+  $('valeur').value = ''; $('reponse').value = ''; razFeedback(); tentative = 0; fini = false; t0 = Date.now(); cur = {q:false, idx:-1};
+}
+function refaire(v,d,a){ setExo({v:+v, d, a}); window.scrollTo({top:$('valeur').offsetTop-80, behavior:'smooth'}); }
+
+function ensureDaily(p){ if (p.qDate !== jour() || p.qRes.length !== NBQ()) { p.qDate = jour(); p.qRes = Array(NBQ()).fill(null); } }
+function lancerQuotidien(){
+  mut(() => ensureDaily(db.prog[user]));
+  const p = db.prog[user], idx = p.qRes.findIndex(x => x === null);
+  renderAll();
+  if (idx < 0) return msg($('feedback'), "Calcul quotidien terminé ! Reviens demain pour garder ta flamme 🔥", "bravo");
+  const r = graine(jour() + "-quotidien"), liste = Array.from({length:NBQ()}, () => gen(r));
+  setExo(liste[idx], true, idx);
+  msg($('feedback'), "Calcul quotidien : exercice " + (idx+1) + " sur " + NBQ(), "avert");
+}
+
+function verifier(){
+  if (fini) return msg($('feedback'), "Exercice terminé : clique sur « Proposition » ou « Calcul quotidien ».", "avert");
+  const v = parseFloat($('valeur').value), d = $('uniteDepart').value, a = $('uniteArrivee').value,
+        rep = parseFloat($('reponse').value), fb = $('feedback');
+  if (isNaN(v)) return msg(fb, "Entre d'abord une valeur à convertir.", "avert");
+  const bonne = conversion(v, d, a);
+  if (isNaN(bonne)) { msg(fb, "Erreur : conversion impossible entre ces unités.", "erreur"); $('resetBtn').style.display = "block"; return; }
+  if (isNaN(rep)) return msg(fb, "Écris ton résultat avant de valider.", "avert");
+  bonneReponse = bonne;
+  const tol = Math.max(Math.abs(bonne) * 1e-10, 1e-12);
+  if (Math.abs(rep - bonne) <= tol) fin(true, v, d, a, rep, bonne);
+  else {
+    tentative++;
+    if (tentative < db.settings.essais) { msg(fb, "Essaie encore ! Lis bien le cours ci-dessous.", "avert"); montrerCours(v, d, a, bonne, false); }
+    else fin(false, v, d, a, rep, bonne);
+  }
+}
+
+function fin(ok, v, d, a, rep, bonne){
+  fini = true;
+  const duree = Math.round((Date.now() - t0) / 1000);
+  let flamme = false;
+  mut(() => {
+    const p = db.prog[user]; ensureDaily(p);
+    if (ok) { p.ok++; p.serie++; p.meilleure = Math.max(p.meilleure, p.serie); } else { p.ko++; p.serie = 0; }
+    p.dernier = {v, d, a};
+    db.answers.push({u:user, t:Date.now(), v, d, a, rep, bonne, ok, essais: ok ? tentative + 1 : tentative, duree, envoye:false});
+    if (cur.q) {
+      p.qRes[cur.idx] = ok;
+      if (p.qRes.every(x => x !== null) && p.dernierJour !== jour()) {
+        p.jours = (p.dernierJour === hier()) ? p.jours + 1 : 1; p.dernierJour = jour(); flamme = true;
+      }
+    }
+  });
+  const fb = $('feedback');
+  if (ok) {
+    msg(fb, "Bravo ! " + (tentative ? "(réussi au " + (tentative + 1) + "e essai)" : "🎉") + (flamme ? " Calcul quotidien terminé : +1 jour de flamme 🔥" : ""), "bravo");
+    $('cours').hidden = true;
+  } else {
+    msg(fb, "La bonne réponse était : " + fmt(bonne), "erreur");
+    montrerCours(v, d, a, bonne, true);
+  }
+  $('resetBtn').style.display = "block";
+  if (!db.settings.libre) setActif(false);
+  renderAll();
+}
+
+/* ---------- Cours complet affiché en cas d'erreur ---------- */
+function tableau(fam, d, a){
+  return '<table class="esc"><tr>' + ordres[fam].map(u => `<td class="${u===d?'dep':u===a?'arr':''}">${sym(u)}</td>`).join('') + '</tr></table>';
+}
+function montrerCours(v, d, a, b, solution){
+  const fd = familleUnite(d), fa = familleUnite(a), r = v ? b / v : 1;
+  const regles = {
+    masse: "Chaque case vaut <b>10 fois</b> la suivante (kg → hg → dag → g → dg → cg → mg). Deux exceptions : <b>1 t = 1 000 kg</b> et <b>1 mg = 1 000 µg</b>.",
+    cube: "Chaque case vaut <b>1 000 fois</b> la suivante : 1 m³ = 1 000 dm³ ; 1 dm³ = 1 000 cm³ ; 1 cm³ = 1 000 mm³. On décale la virgule de <b>3 rangs</b> par case.",
+    capacite: "Chaque case vaut <b>10 fois</b> la suivante : 1 hL = 10 daL ; 1 daL = 10 L ; 1 L = 10 dL ; 1 dL = 10 cL ; 1 cL = 10 mL."
+  };
+  let h = '<h3>📘 Cours complet</h3><h4>1. Les unités concernées</h4>';
+  h += '<p>Départ en <span class="dep">&nbsp;orange&nbsp;</span>, arrivée en <span class="arr">&nbsp;vert&nbsp;</span>.</p>';
+  [...new Set([fd, fa])].forEach(f => { h += tableau(f, d, a) + `<p>${regles[f]}</p>`; });
+  if (fd !== fa) h += '<h4>2. Les passerelles</h4><p><b>1 L = 1 dm³</b> ; <b>1 mL = 1 cm³</b> ; 1 m³ = 1 000 L. Pour passer d\'un volume à une capacité, convertis d\'abord en dm³ (ou cm³), puis dis « dm³ = L » (ou « cm³ = mL »).</p>';
+  h += '<h4>' + (fd !== fa ? '3' : '2') + '. La méthode</h4><ol><li>Repère la famille des deux unités.</li><li>Place-les dans le tableau.</li><li>Compte le nombre de cases entre les deux.</li><li>Unité d\'arrivée plus petite : le nombre devient <b>plus grand</b> (on multiplie). Plus grande : il devient <b>plus petit</b> (on divise).</li></ol>';
+  h += '<h4>Avec tes nombres</h4>';
+  if (isFinite(r) && r !== 1) {
+    const k = Math.round(Math.abs(Math.log10(r)));
+    h += r > 1
+      ? `<p>${fmt(v)} ${sym(d)} → ${sym(a)} : l'unité d'arrivée est plus petite, on multiplie par ${fmt(r)} (virgule décalée de ${k} chiffre${k>1?'s':''} vers la droite).<br>${fmt(v)} × ${fmt(r)} = <b>${fmt(b)}</b></p>`
+      : `<p>${fmt(v)} ${sym(d)} → ${sym(a)} : l'unité d'arrivée est plus grande, on divise par ${fmt(1/r)} (virgule décalée de ${k} chiffre${k>1?'s':''} vers la gauche).<br>${fmt(v)} ÷ ${fmt(1/r)} = <b>${fmt(b)}</b></p>`;
+  } else h += '<p>Les deux unités sont équivalentes : le nombre ne change pas.</p>';
+  h += '<h4>Pièges courants</h4><ul><li>Se tromper de sens : plus l\'unité est petite, plus il faut d\'unités.</li><li>Oublier que les volumes en m³ changent de 1 000 à chaque case, pas de 10.</li><li>Confondre dm³ (volume) et dL : 1 dm³ = 1 L = 10 dL.</li></ul>';
+  if (solution) h += `<p><b>Résultat attendu : ${fmt(b)} ${sym(a)}</b></p>`;
+  $('cours').innerHTML = h; $('cours').hidden = false;
+}
+
+/* ---------- Affichage élève : compteurs, flammes, mémoire ---------- */
+function renderAll(){
+  db = load(); const p = db.prog[user]; if (!p) return;
+  const total = p.ok + p.ko, pc = total ? Math.round(100 * p.ok / total) : 0;
+  const actif = p.dernierJour === jour() || p.dernierJour === hier();
+  const q = (p.qDate === jour() ? p.qRes : []).filter(x => x !== null).length;
+  $('stats').innerHTML =
+    `<span class="chip">✅ ${p.ok}</span><span class="chip">❌ ${p.ko}</span><span class="chip">📊 ${total} exercice${total>1?'s':''} (${pc} %)</span>` +
+    `<span class="chip">Série : ${"🔥".repeat(Math.min(p.serie,10))}${p.serie>10?'+':''} ${p.serie}</span>` +
+    `<span class="chip">🗓️ ${actif ? p.jours : 0} jour${p.jours>1?'s':''} d'affilée</span><span class="chip" id="chrono">⏱️ 0 s</span>`;
+  $('dbar').style.width = (100 * q / NBQ()) + '%';
+  $('dailyBtn').textContent = q >= NBQ() ? "📅 Quotidien terminé ✔" : `📅 Calcul quotidien (${q}/${NBQ()})`;
+  const m = new Map();
+  db.answers.filter(x => x.u === user).forEach(x => m.set(x.v + x.d + x.a, x));
+  const E = [...m.values()].filter(x => !x.ok).slice(-8).reverse();
+  $('memo').innerHTML = E.length
+    ? E.map(x => `<div class="item">${fmt(x.v)} ${sym(x.d)} → ${sym(x.a)}<button class="mini blue" onclick="refaire('${x.v}','${x.d}','${x.a}')">Refaire</button></div>`).join('')
+    : "Aucune erreur à revoir 🎉";
+}
+// Temps réel : chronomètre de l'exercice
+setInterval(() => { const c = $('chrono'); if (user && !isProf && c && !fini) c.textContent = "⏱️ " + Math.round((Date.now() - t0) / 1000) + " s"; }, 500);
+
+/* ---------- Envoi au professeur ---------- */
+function envoyer(){
+  const email = $('emailEleve').value.trim(); let nouvelles = [];
+  mut(() => {
+    if (email) db.emailProf = email;
+    nouvelles = db.answers.filter(x => x.u === user && !x.envoye);
+    nouvelles.forEach(x => x.envoye = true);
+    if (nouvelles.length) db.envois.push({u:user, t:Date.now(), n:nouvelles.length});
+  });
+  if (!nouvelles.length) return msg($('envMsg'), "Rien de nouveau à envoyer.", "avert");
+  msg($('envMsg'), nouvelles.length + " réponse(s) envoyée(s) au prof ✔", "bravo");
+  if (email) {
+    const p = db.prog[user], lignes = db.answers.filter(x => x.u === user).slice(-20)
+      .map(x => `${x.ok?'OK ':'ERR'} ${fmt(x.v)} ${x.d} -> ${x.a} | réponse ${fmt(x.rep)} | attendu ${fmt(x.bonne)}`).join('\n');
+    location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("Conversions - " + user)}&body=${encodeURIComponent(`Élève : ${user}\nScore : ${p.ok} bonnes / ${p.ok+p.ko}\n\n${lignes}`)}`;
+  }
+  renderAll();
+}
+
+/* ---------- Espace professeur ---------- */
+const heure = t => new Date(t).toLocaleString('fr-FR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+function renderProf(){
+  db = load();
+  const rows = Object.keys(db.users).filter(u => db.users[u].role === 'eleve').map(u => {
+    const A = db.answers.filter(x => x.u === u), ok = A.filter(x => x.ok).length, p = db.prog[u] || newProg();
+    const env = db.envois.filter(e => e.u === u).pop();
+    return `<tr class="sel" data-u="${esc(u)}" onclick="sel=this.dataset.u;renderProf()"><td>${esc(u)}</td><td>${A.length}</td><td>${A.length ? Math.round(100*ok/A.length) : 0} %</td><td>${p.serie}</td><td>${p.dernierJour === jour() || p.dernierJour === hier() ? p.jours : 0}</td><td>${A.length ? heure(A[A.length-1].t) : '-'}</td><td>${env ? heure(env.t) : '-'}</td></tr>`;
+  });
+  $('tabEleves').innerHTML = '<tr><th>Élève</th><th>Exercices</th><th>Réussite</th><th>Série 🔥</th><th>Jours 🗓️</th><th>Dernière activité</th><th>Dernier envoi</th></tr>' + (rows.join('') || '<tr><td colspan="7">Aucun élève pour le moment.</td></tr>');
+  $('maj').textContent = "(" + new Date().toLocaleTimeString('fr-FR') + ")";
+  if (sel && db.users[sel]) {
+    const A = db.answers.filter(x => x.u === sel).slice(-30).reverse();
+    $('detail').innerHTML = `<h3>Réponses de ${esc(sel)}</h3><div style="overflow-x:auto"><table><tr><th>Heure</th><th>Exercice</th><th>Réponse</th><th>Attendu</th><th></th><th>Durée</th><th>Envoyé</th></tr>` +
+      A.map(x => `<tr><td>${heure(x.t)}</td><td>${fmt(x.v)} ${sym(x.d)} → ${sym(x.a)}</td><td>${fmt(x.rep)}</td><td>${fmt(x.bonne)}</td><td class="${x.ok?'vert':'rouge'}">${x.ok?'✔':'✖'}</td><td>${x.duree} s</td><td>${x.envoye?'oui':'non'}</td></tr>`).join('') + '</table></div>';
+  } else $('detail').innerHTML = '';
+}
+function exportCSV(){
+  db = load();
+  const L = ["eleve;date;valeur;depart;arrivee;reponse;attendu;correct;essais;duree_s;envoye"].concat(
+    db.answers.map(x => [x.u, new Date(x.t).toISOString(), x.v, x.d, x.a, x.rep, x.bonne, x.ok ? 1 : 0, x.essais, x.duree, x.envoye ? 1 : 0].join(';')));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(["\ufeff" + L.join("\n")], {type:"text/csv"}));
+  a.download = "resultats-conversions.csv"; a.click();
+}
+function toutEffacer(){
+  if (confirm("Effacer tous les comptes et toutes les réponses ?")) { try { localStorage.removeItem(KEY); } catch(e) {} MEM = null; db = load(); sel = null; logout(); }
+}
+// Temps réel : le tableau de bord se met à jour dès qu'un élève répond
+window.addEventListener('storage', e => { if (e.key === KEY && isProf) renderProf(); });
+setInterval(() => { if (isProf) renderProf(); }, 2000);
+
+/* ---------- Espace propriétaire ---------- */
+const ROLES = {eleve:"Élève", prof:"Professeur", owner:"Propriétaire"};
+const RESERVES = ["__proto__","constructor","prototype","toString","valueOf","hasOwnProperty"];
+const nbOwners = () => Object.keys(db.users).filter(u => db.users[u].role === 'owner').length;
+async function actAdd(id, pw, role){
+  db = load();
+  if (!id) return "Entre un identifiant."; if (RESERVES.includes(id)) return "Identifiant réservé.";
+  if (db.users[id]) return "Cet identifiant existe déjà.";
+  if (!pw) return "Mot de passe vide."; if (!ROLES[role]) return "Rôle inconnu (eleve, prof, owner).";
+  const tmp = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:false, autoRefreshToken:false, detectSessionInUrl:false}});
+  const r = await tmp.auth.signUp({email:emailDe(id), password:mdp(pw)});
+  if (r.error) return traduire(r.error.message);
+  if (!r.data.session) return "Désactive « Confirm email » dans Supabase (Authentication → Providers → Email).";
+  const {error} = await tmp.rpc('creer_profil', {p_id:id, p_role:role, p_code:role === 'eleve' ? db.codes.owner : db.codes[role]});
+  if (error) return traduire(error.message);
+  await pull(true);
+  return "Compte « " + id + " » créé (" + ROLES[role] + ").";
+}
+async function actPasswd(id, pw){
+  db = load();
+  if (!db.users[id]) return "Compte introuvable : " + id;
+  if (!pw) return "Mot de passe vide.";
+  const {error} = await sb.rpc('admin_passwd', {p_id:id, p_pw:mdp(pw)});
+  return error ? error.message : "Mot de passe de " + id + " modifié.";
+}
+function actRole(id, r){
+  db = load();
+  if (!db.users[id]) return "Compte introuvable : " + id;
+  if (!ROLES[r]) return "Rôle inconnu (eleve, prof, owner).";
+  if (db.users[id].role === 'owner' && r !== 'owner' && nbOwners() < 2) return "Impossible : il doit rester un propriétaire.";
+  mut(() => { db.users[id].role = r; if (r === 'eleve' && !db.prog[id]) db.prog[id] = newProg(); });
+  return id + " est maintenant : " + ROLES[r] + ".";
+}
+async function actDel(id){
+  db = load();
+  if (!db.users[id]) return "Compte introuvable : " + id;
+  if (id === user) return "Tu ne peux pas supprimer ton propre compte.";
+  if (db.users[id].role === 'owner' && nbOwners() < 2) return "Impossible : il doit rester un propriétaire.";
+  const {error} = await sb.rpc('admin_supprimer', {p_id:id});
+  if (error) return error.message;
+  mut(() => { delete db.users[id]; delete db.prog[id]; db.answers = db.answers.filter(x => x.u !== id); db.envois = db.envois.filter(e => e.u !== id); });
+  return "Compte " + id + " supprimé avec ses données.";
+}
+function actReset(id){
+  db = load();
+  if (!db.users[id]) return "Compte introuvable : " + id;
+  mut(() => { db.prog[id] = newProg(); db.answers = db.answers.filter(x => x.u !== id); db.envois = db.envois.filter(e => e.u !== id); });
+  return "Scores et réponses de " + id + " remis à zéro.";
+}
+function actPurge(){
+  mut(() => { db.answers = []; db.envois = []; Object.keys(db.prog).forEach(u => db.prog[u] = newProg()); });
+  return "Toutes les réponses ont été effacées.";
+}
+async function actWipe(){
+  db = load();
+  for (const u of Object.keys(db.users)) if (db.users[u].role !== 'owner') await sb.rpc('admin_supprimer', {p_id:u});
+  mut(() => {
+    Object.keys(db.users).forEach(u => { if (db.users[u].role !== 'owner') delete db.users[u]; });
+    Object.keys(db.prog).forEach(u => { if (!db.users[u]) delete db.prog[u]; });
+    db.answers = db.answers.filter(x => db.users[x.u]); db.envois = db.envois.filter(e => db.users[e.u]);
+  });
+  return "Tous les comptes non propriétaires ont été supprimés.";
+}
+function actCode(which, val){
+  if (!['prof','owner'].includes(which) || !val) return "Usage : codes prof|owner <nouveau code>";
+  mut(() => { db.codes[which] = val; });
+  return "Code " + which + " modifié.";
+}
+function statsTexte(){
+  db = load(); const U = Object.keys(db.users), n = r => U.filter(u => db.users[u].role === r).length, ok = db.answers.filter(x => x.ok).length;
+  return `Comptes : ${U.length} (${n('eleve')} élèves, ${n('prof')} profs, ${n('owner')} propriétaires)\nRéponses : ${db.answers.length} (${db.answers.length ? Math.round(100*ok/db.answers.length) : 0} % de réussite)\nEnvois au prof : ${db.envois.length}\nTaille de la base : ${(JSON.stringify(db).length/1024).toFixed(1)} Ko`;
+}
+async function cmd(txt){
+  const raw = (typeof txt === 'string' ? txt : $('cmdIn').value).trim(); if (!raw) return;
+  if (typeof txt !== 'string') $('cmdIn').value = '';
+  const onoff = v => /^(on|1|oui|true|oui)$/i.test(v || '');
+  const [c, ...a] = raw.split(/\s+/); let out;
+  switch (c.toLowerCase()) {
+    case 'help': out = "COMPTES : accounts | users [role] | find <txt> | info <id> | blocked | whoami\nadd <id> <mdp> [role] | passwd <id> <mdp> | resetpw <id> (→ 1234)\nrole <id> <role> | promote <id> | demote <id> | block <id> | unblock <id> | del <id>\nDONNÉES : stats | top | errors | daily | reset <id> | resetdaily <id|all> | delans <id> | purge | wipe\nRÉGLAGES : settings | set <clé> <valeur> | maintenance on|off | inscriptions on|off | libre on|off\ncodes [prof|owner <code>] | annonce <texte>\nMESSAGES : msg <dest|@profs|@owners|@eleves> <texte> | msgs | clearmsgs\nSYSTÈME : log | clearlog | envois | export | csv | size | date | clear | logout"; break;
+    case 'users': db = load(); out = Object.keys(db.users).filter(u => !a[0] || db.users[u].role === a[0]).map(u => u + " (" + db.users[u].role + ")").join("\n") || "aucun compte"; break;
+    case 'stats': out = statsTexte(); break;
+    case 'envois': db = load(); out = db.envois.slice(-15).map(e => heure(e.t) + " : " + e.u + " (" + e.n + " réponses)").join("\n") || "aucun envoi"; break;
+    case 'add': out = await actAdd(a[0], a[1], a[2] || 'eleve'); break;
+    case 'passwd': out = await actPasswd(a[0], a[1]); break;
+    case 'role': out = actRole(a[0], a[1]); break;
+    case 'del': out = await actDel(a[0]); break;
+    case 'reset': out = actReset(a[0]); break;
+    case 'codes': db = load(); out = a.length ? actCode(a[0], a[1]) : "Code prof : " + db.codes.prof + "\nCode owner : " + db.codes.owner; break;
+    case 'purge': out = actPurge(); break;
+    case 'wipe': out = await actWipe(); break;
+    case 'export': exportJSON(); out = "Sauvegarde téléchargée."; break;
+    case 'block': out = actBlock(a[0], true); break;
+    case 'unblock': out = actBlock(a[0], false); break;
+    case 'annonce': mut(() => { db.settings.annonce = a.join(" "); }); out = a.length ? "Annonce publiée." : "Annonce retirée."; break;
+    case 'log': db = load(); out = db.logs.slice(-15).map(l => heure(l.t) + " " + l.u + " : " + l.a).join("\n") || "journal vide"; break;
+    case 'clearlog': out = actClear('logs'); break;
+    case 'clearmsgs': out = actClear('messages'); break;
+    case 'accounts': db = load(); out = Object.keys(db.users).map(u => { const x = db.users[u]; return u + " | " + ROLES[x.role] + " | créé " + heure(x.date) + (x.bloque ? " | 🔒 bloqué" : ""); }).join("\n") + "\n\nCode professeur : " + db.codes.prof + "\nCode propriétaire : " + db.codes.owner + "\n(Les mots de passe sont chiffrés : utilise passwd ou resetpw pour en définir un.)"; break;
+    case 'whoami': db = load(); out = user + " (" + ROLES[db.users[user].role] + ")"; break;
+    case 'find': db = load(); out = Object.keys(db.users).filter(u => u.toLowerCase().includes((a[0] || "").toLowerCase())).join(", ") || "aucun résultat"; break;
+    case 'blocked': db = load(); out = Object.keys(db.users).filter(u => db.users[u].bloque).join(", ") || "aucun compte bloqué"; break;
+    case 'info': db = load(); if (!db.users[a[0]]) { out = "Compte introuvable : " + a[0]; break; }
+      { const x = db.users[a[0]], pg = db.prog[a[0]] || newProg(), A = db.answers.filter(z => z.u === a[0]);
+        out = `${a[0]} : ${ROLES[x.role]}${x.bloque ? " (bloqué)" : ""}\nCréé : ${heure(x.date)}\nRéponses : ${A.length} (${A.filter(z => z.ok).length} bonnes)\nSérie : ${pg.serie} | meilleure : ${pg.meilleure} | jours : ${pg.jours}\nMessages envoyés : ${db.messages.filter(z => z.f === a[0]).length}`; } break;
+    case 'top': db = load(); out = Object.keys(db.users).filter(u => db.users[u].role === 'eleve').map(u => { const A = db.answers.filter(z => z.u === u); return {u, n:A.length, pc:A.length ? Math.round(100 * A.filter(z => z.ok).length / A.length) : 0}; }).sort((x, y) => y.pc - x.pc || y.n - x.n).slice(0, 5).map((r, i) => (i + 1) + ". " + r.u + " : " + r.pc + " % (" + r.n + " exos)").join("\n") || "aucun élève"; break;
+    case 'errors': db = load(); { const pr = {}; db.answers.forEach(z => { if (!z.ok) { const k = sym(z.d) + " → " + sym(z.a); pr[k] = (pr[k] || 0) + 1; } });
+      out = Object.entries(pr).sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k, v]) => k + " : " + v + " erreur(s)").join("\n") || "aucune erreur"; } break;
+    case 'daily': db = load(); { const r = graine(jour() + "-quotidien"); out = "Calcul quotidien du " + jour() + " :\n" + Array.from({length:NBQ()}, () => gen(r)).map((e, i) => (i + 1) + ". " + fmt(e.v) + " " + sym(e.d) + " → " + sym(e.a)).join("\n"); } break;
+    case 'settings': db = load(); out = Object.entries(db.settings).map(([k, v]) => k + " = " + (v === "" ? "(vide)" : v)).join("\n"); break;
+    case 'set': { const k = a[0], v = a.slice(1).join(" "), num = {nbQuotidien:[1, 20], essais:[1, 5], valMax:[1, 1e6]}, bool = ['masse', 'volume', 'libre', 'inscription', 'maintenance'];
+      db = load();
+      if (num[k]) { mut(() => { db.settings[k] = clamp(+v, num[k][0], num[k][1], db.settings[k]); }); out = k + " = " + db.settings[k]; }
+      else if (bool.includes(k)) { mut(() => { db.settings[k] = onoff(v); }); out = k + " = " + db.settings[k]; }
+      else out = "Clés : nbQuotidien, essais, valMax, masse, volume, libre, inscription, maintenance"; } break;
+    case 'maintenance': case 'inscriptions': case 'libre': { const k = c === 'inscriptions' ? 'inscription' : c.toLowerCase(); mut(() => { db.settings[k] = onoff(a[0]); }); out = k + " = " + db.settings[k]; } break;
+    case 'resetpw': out = await actPasswd(a[0], "1234"); if (out.startsWith("Mot de passe")) out += " (nouveau mot de passe : 1234)"; break;
+    case 'promote': case 'demote': { db = load(); const x = db.users[a[0]], o = ['eleve', 'prof', 'owner'];
+      if (!x) out = "Compte introuvable : " + a[0];
+      else { const i = o.indexOf(x.role) + (c === 'promote' ? 1 : -1); out = o[i] ? actRole(a[0], o[i]) : "Impossible : rôle déjà au " + (c === 'promote' ? "maximum" : "minimum") + "."; } } break;
+    case 'rename': out = "Renommer n'est pas disponible avec Supabase (l'identifiant sert à la connexion)."; break;
+    case 'delans': mut(() => { db.answers = db.answers.filter(z => z.u !== a[0]); }); out = "Réponses de " + a[0] + " supprimées."; break;
+    case 'resetdaily': mut(() => { Object.keys(db.prog).forEach(u => { if (a[0] === 'all' || u === a[0]) Object.assign(db.prog[u], {qDate:"", qRes:[]}); }); }); out = "Calcul quotidien remis à zéro pour " + (a[0] || "personne") + "."; break;
+    case 'msg': { const t = a.slice(1).join(" "); out = t ? sendMsgTo(a[0], "Message de l'administration", t) : "Usage : msg <destinataire> <texte>"; } break;
+    case 'msgs': db = load(); out = db.messages.length + " message(s)\n" + db.messages.slice(-10).reverse().map(z => heure(z.t) + " " + z.f + " → " + nomDest(z.to) + " : " + z.s).join("\n"); break;
+    case 'csv': exportCSV(); out = "Export CSV téléchargé."; break;
+    case 'size': db = load(); out = (JSON.stringify(db).length / 1024).toFixed(1) + " Ko"; break;
+    case 'date': out = new Date().toLocaleString('fr-FR'); break;
+    case 'clear': $('cmdOut').textContent = ""; return;
+    case 'logout': logout(); return;
+    default: out = "Commande inconnue. Tape help.";
+  }
+  journal("commande : " + raw.replace(/^(passwd \S+ ).*/i, "$1***"));
+  $('cmdOut').textContent = "> " + raw.replace(/^(passwd \S+ ).*/i, "$1***") + "\n" + out + "\n\n" + $('cmdOut').textContent;
+  renderOwner();
+}
+async function rep(out){ out = await out; journal(out); msg($('oMsg'), out, /introuvable|mpossible|existe déjà|réservé|vide|Usage|Tu ne peux|inconnu|Entre/.test(out) ? "erreur" : "bravo"); renderOwner(); }
+function chRole(id, r){ rep(actRole(id, r)); }
+function btnPw(id){ const p = prompt("Nouveau mot de passe pour " + id + " :"); if (p !== null) rep(actPasswd(id, p)); }
+function btnReset(id){ if (confirm("Remettre à zéro les scores de " + id + " ?")) rep(actReset(id)); }
+function btnDel(id){ if (confirm("Supprimer le compte " + id + " et ses données ?")) rep(actDel(id)); }
+function saveCodes(){ actCode('prof', $('oCodeProf').value.trim()); rep(actCode('owner', $('oCodeOwner').value.trim()).replace(/^Code/, "Codes")); }
+function exportJSON(){
+  db = load();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 1)], {type:"application/json"}));
+  a.download = "sauvegarde-conversions-" + jour() + ".json"; a.click();
+}
+function importDB(f){
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d.users || !Array.isArray(d.answers)) throw 0;
+      if (!d.users[user] || d.users[user].role !== 'owner') return msg($('oMsg'), "Import refusé : ton compte propriétaire doit exister dans le fichier.", "erreur");
+      if (!confirm("Remplacer toute la base actuelle par ce fichier ?")) return;
+      mut(() => { db = Object.assign(db, {users:{},answers:[],prog:{},envois:[],emailProf:""}, d); });
+      msg($('oMsg'), "Base importée ✔", "bravo"); renderOwner();
+    } catch (e) { msg($('oMsg'), "Fichier invalide.", "erreur"); }
+    $('oFile').value = '';
+  };
+  r.readAsText(f);
+}
+function renderOwner(){
+  db = load();
+  const U = Object.keys(db.users), n = r => U.filter(u => db.users[u].role === r).length, ok = db.answers.filter(x => x.ok).length;
+  const cnt = {}; db.answers.forEach(a => { cnt[a.u] = (cnt[a.u] || 0) + 1; });
+  $('oStats').innerHTML = [`👥 ${U.length} comptes`, `🎓 ${n('eleve')} élèves`, `🧑‍🏫 ${n('prof')} profs`, `👑 ${n('owner')} propriétaires`, `🔒 ${U.filter(u => db.users[u].bloque).length} bloqués`,
+    `✏️ ${db.answers.length} réponses`, `✅ ${db.answers.length ? Math.round(100*ok/db.answers.length) : 0} %`, `📤 ${db.envois.length} envois`, `💬 ${db.messages.length} messages`,
+    `💾 ${(JSON.stringify(db).length/1024).toFixed(1)} Ko`].map(t => `<span class="chip">${t}</span>`).join('');
+  const q = ($('oSearch').value || "").toLowerCase();
+  if (!$('oUsers').contains(document.activeElement)) {
+    $('oUsers').innerHTML = '<tr><th>Identifiant</th><th>Rôle</th><th>Créé le</th><th>Exos</th><th>Actions</th></tr>' + U.filter(u => u.toLowerCase().includes(q)).map(u => {
+      const x = db.users[u], d = `data-u="${esc(u)}"`;
+      return `<tr><td>${x.bloque ? '🔒 ' : ''}${esc(u)}</td><td><select ${d} style="margin:0;width:auto" onchange="chRole(this.dataset.u,this.value)">${Object.keys(ROLES).map(r => `<option value="${r}"${x.role===r?' selected':''}>${ROLES[r]}</option>`).join('')}</select></td><td>${heure(x.date)}</td><td>${cnt[u] || 0}</td><td><button class="mini blue" title="Détails" ${d} onclick="detailUser(this.dataset.u)">🔍</button><button class="mini" title="Changer le mot de passe" ${d} onclick="btnPw(this.dataset.u)">🔑</button><button class="mini" title="Bloquer / débloquer" ${d} onclick="rep(actBlock(this.dataset.u,${!x.bloque}))">${x.bloque ? '🔓' : '🔒'}</button><button class="mini blue" title="Remettre à zéro" ${d} onclick="btnReset(this.dataset.u)">♻️</button><button class="mini red" title="Supprimer" ${d} onclick="btnDel(this.dataset.u)">🗑️</button></td></tr>`;
+    }).join('');
+  }
+  if (oSel && db.users[oSel]) {
+    const A = db.answers.filter(x => x.u === oSel).slice(-20).reverse(), p = db.prog[oSel] || newProg();
+    $('oDetail').innerHTML = `<h4>🔍 ${esc(oSel)}</h4><p>Série : ${p.serie} · meilleure série : ${p.meilleure} · jours d'affilée : ${p.jours}</p><button class="mini blue" onclick="rep(actStreak(oSel))">Remettre série et quotidien à 0</button><button class="mini ghost" onclick="oSel=null;renderOwner()">Fermer</button><div style="overflow-x:auto"><table><tr><th>Heure</th><th>Exercice</th><th>Réponse</th><th></th><th></th></tr>` +
+      A.map(x => `<tr><td>${heure(x.t)}</td><td>${fmt(x.v)} ${sym(x.d)} → ${sym(x.a)}</td><td>${fmt(x.rep)} (attendu ${fmt(x.bonne)})</td><td class="${x.ok?'vert':'rouge'}">${x.ok?'✔':'✖'}</td><td><button class="mini red" data-t="${x.t}" onclick="rep(actDelAns(oSel,+this.dataset.t))">🗑️</button></td></tr>`).join('') + '</table></div>';
+  } else $('oDetail').innerHTML = '';
+  // Statistiques
+  const rk = U.filter(u => db.users[u].role === 'eleve').map(u => {
+    const A = db.answers.filter(x => x.u === u), o = A.filter(x => x.ok).length, p = db.prog[u] || newProg();
+    return {u, n:A.length, pc:A.length ? Math.round(100*o/A.length) : 0, m:p.meilleure, j:p.jours};
+  }).sort((a, b) => b.pc - a.pc || b.n - a.n);
+  $('oRank').innerHTML = '<tr><th>#</th><th>Élève</th><th>Exos</th><th>Réussite</th><th>Meilleure série</th><th>Jours 🔥</th></tr>' + (rk.map((r, i) => `<tr><td>${i+1}</td><td>${esc(r.u)}</td><td>${r.n}</td><td>${r.pc} %</td><td>${r.m}</td><td>${r.j}</td></tr>`).join('') || '<tr><td colspan="6">Aucun élève.</td></tr>');
+  const pr = {}; db.answers.forEach(a => { const k = a.d + '|' + a.a; (pr[k] = pr[k] || {n:0, e:0}).n++; if (!a.ok) pr[k].e++; });
+  $('oErr').innerHTML = '<tr><th>Conversion</th><th>Tentatives</th><th>Erreurs</th><th>% d\'erreurs</th></tr>' + (Object.entries(pr).filter(([, v]) => v.e).sort((a, b) => b[1].e - a[1].e).slice(0, 8)
+    .map(([k, v]) => { const [d, a] = k.split('|'); return `<tr><td>${sym(d)} → ${sym(a)}</td><td>${v.n}</td><td>${v.e}</td><td>${Math.round(100*v.e/v.n)} %</td></tr>`; }).join('') || '<tr><td colspan="4">Aucune erreur enregistrée.</td></tr>');
+  const jours = Array.from({length:7}, (_, i) => new Date(Date.now() - i * 864e5).toLocaleDateString('sv')), pj = {};
+  db.answers.forEach(a => { const d = new Date(a.t).toLocaleDateString('sv'); pj[d] = (pj[d] || 0) + 1; });
+  const mx = Math.max(1, ...jours.map(d => pj[d] || 0));
+  $('oAct').innerHTML = jours.map(d => `<tr><td>${d}</td><td style="width:60%"><div class="bar"><i style="width:${100*(pj[d]||0)/mx}%"></i></div></td><td>${pj[d] || 0}</td></tr>`).join('');
+  $('oLast').innerHTML = '<tr><th>Heure</th><th>Élève</th><th>Exercice</th><th>Réponse</th><th></th></tr>' +
+    (db.answers.slice(-15).reverse().map(x => `<tr><td>${heure(x.t)}</td><td>${esc(x.u)}</td><td>${fmt(x.v)} ${sym(x.d)} → ${sym(x.a)}</td><td>${fmt(x.rep)} (attendu ${fmt(x.bonne)})</td><td class="${x.ok?'vert':'rouge'}">${x.ok?'✔':'✖'}</td></tr>`).join('') || '<tr><td colspan="5">Aucune réponse pour le moment.</td></tr>');
+  $('oLog').innerHTML = '<tr><th>Heure</th><th>Compte</th><th>Action</th></tr>' + (db.logs.slice(-60).reverse().map(l => `<tr><td>${heure(l.t)}</td><td>${esc(l.u)}</td><td style="text-align:left">${esc(l.a)}</td></tr>`).join('') || '<tr><td colspan="3">Journal vide.</td></tr>');
+}
+window.addEventListener('storage', e => { if (e.key === KEY && isOwner) renderOwner(); });
+setInterval(() => { if (isOwner) renderOwner(); }, 2000);
+$('cmdIn').addEventListener('keydown', e => { if (e.key === 'Enter') cmd(); });
+
+/* ---------- Réglages, journal, messagerie ---------- */
+let oSel = null, nbU = -1;
+const ouverts = new Set();
+const clamp = (x, a, b, d) => isNaN(x) ? d : Math.min(b, Math.max(a, Math.round(x)));
+function journal(a, u){ mut(() => { db.logs.push({t:Date.now(), u:u || user || "-", a}); if (db.logs.length > 300) db.logs.splice(0, db.logs.length - 300); }); }
+function setActif(b){ $('reponse').disabled = !b; $('btnValider').disabled = !b; }
+function appliquerMode(){ const L = db.settings.libre; ['valeur','uniteDepart','uniteArrivee'].forEach(id => $(id).disabled = !L); if (L) setActif(true); }
+function majBandeau(){ const t = db.settings.annonce; $('annonce').hidden = !(user && t); $('annonce').textContent = "📢 " + t; }
+function oTab(n){
+  document.querySelectorAll('.otab').forEach(d => d.hidden = d.id !== 't-' + n);
+  document.querySelectorAll('[data-t]').forEach(b => { if (b.classList.contains('tab')) b.classList.toggle('on', b.dataset.t === n); });
+  if (n === 'reglages') chargerReglages();
+}
+function chargerReglages(){
+  db = load(); const S = db.settings;
+  $('sNbQ').value = S.nbQuotidien; $('sEss').value = S.essais; $('sMax').value = S.valMax;
+  $('sMasse').checked = S.masse; $('sVol').checked = S.volume; $('sLibre').checked = S.libre;
+  $('sInscr').checked = S.inscription; $('sMaint').checked = S.maintenance; $('sAnn').value = S.annonce;
+  $('oCodeProf').value = db.codes.prof; $('oCodeOwner').value = db.codes.owner;
+}
+function saveSettings(){
+  mut(() => {
+    db.settings = {nbQuotidien:clamp(+$('sNbQ').value, 1, 20, 5), essais:clamp(+$('sEss').value, 1, 5, 2), valMax:clamp(+$('sMax').value, 1, 1e6, 100),
+      masse:$('sMasse').checked, volume:$('sVol').checked, libre:$('sLibre').checked, inscription:$('sInscr').checked, maintenance:$('sMaint').checked, annonce:$('sAnn').value.trim()};
+    if ($('oCodeProf').value) db.codes.prof = $('oCodeProf').value;
+    if ($('oCodeOwner').value) db.codes.owner = $('oCodeOwner').value;
+  });
+  rep("Réglages enregistrés."); chargerReglages(); majBandeau();
+}
+function detailUser(u){ oSel = u; renderOwner(); }
+function actBlock(id, b){
+  db = load();
+  if (!db.users[id]) return "Compte introuvable : " + id;
+  if (id === user) return "Tu ne peux pas bloquer ton propre compte.";
+  mut(() => { db.users[id].bloque = b; });
+  return "Compte " + id + (b ? " bloqué." : " débloqué.");
+}
+function actDelAns(u, t){ mut(() => { db.answers = db.answers.filter(x => !(x.u === u && x.t === t)); }); return "Réponse supprimée."; }
+function actStreak(u){
+  db = load();
+  if (!db.prog[u]) return "Compte introuvable : " + u;
+  mut(() => { Object.assign(db.prog[u], {serie:0, jours:0, dernierJour:"", qDate:"", qRes:[]}); });
+  return "Série et calcul quotidien de " + u + " remis à zéro.";
+}
+function actClear(w){ mut(() => { db[w] = []; }); return w === 'logs' ? "Journal vidé." : "Messagerie vidée."; }
+
+const nomDest = t => ({"@profs":"les professeurs", "@owners":"les propriétaires", "@eleves":"les élèves"})[t] || t;
+function fillTo(){
+  db = load(); const r = db.users[user].role, o = [["@profs","Tous les professeurs"], ["@owners","Tous les propriétaires"]];
+  if (r !== 'eleve') o.push(["@eleves","Tous les élèves"]);
+  Object.keys(db.users).forEach(u => { if (u !== user && (r !== 'eleve' || db.users[u].role !== 'eleve')) o.push([u, u + " (" + ROLES[db.users[u].role] + ")"]); });
+  const h = o.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  $('mTo').innerHTML = h; $('envTo').innerHTML = h; nbU = Object.keys(db.users).length;
+}
+function sendMsgTo(to, s, b){
+  db = load();
+  if (!db.users[to] && !/^@(profs|owners|eleves)$/.test(to)) return "Destinataire introuvable.";
+  mut(() => { db.messages.push({id:Date.now() + "-" + Math.random().toString(36).slice(2, 6), f:user, to, t:Date.now(), s, b, lu:{}, del:{}}); });
+  return "Message envoyé ✔";
+}
+function sendMsg(){
+  const s = $('mSub').value.trim(), b = $('mBody').value.trim();
+  if (!s || !b) return msg($('mMsg'), "Écris un objet et un message.", "avert");
+  const r = sendMsgTo($('mTo').value, s, b), ok = r.includes('✔');
+  msg($('mMsg'), r, ok ? 'bravo' : 'erreur');
+  if (ok) { $('mSub').value = ''; $('mBody').value = ''; journal("message à " + nomDest($('mTo').value)); }
+  renderMsgs();
+}
+function envoyerMsg(){
+  db = load(); const A = db.answers.filter(x => x.u === user && !x.envoye);
+  if (!A.length) return msg($('envMsg'), "Rien de nouveau à envoyer.", "avert");
+  const p = db.prog[user], lignes = A.slice(-40).map(x => `${x.ok ? '✔' : '✖'} ${fmt(x.v)} ${x.d} → ${x.a} | réponse ${fmt(x.rep)} | attendu ${fmt(x.bonne)} | ${x.duree} s`).join("\n");
+  const r = sendMsgTo($('envTo').value, "Réponses de " + user + " (" + A.length + ")", `Élève : ${user}\nScore total : ${p.ok} bonnes / ${p.ok + p.ko}\nNouvelles réponses : ${A.length}\n\n${lignes}`);
+  if (!r.includes('✔')) return msg($('envMsg'), r, 'erreur');
+  mut(() => { db.answers.forEach(x => { if (x.u === user && !x.envoye) x.envoye = true; }); db.envois.push({u:user, t:Date.now(), n:A.length}); });
+  msg($('envMsg'), A.length + " réponse(s) envoyée(s) par messagerie ✔", "bravo"); renderAll(); renderMsgs();
+}
+function renderMsgs(){
+  if (!user) return;
+  db = load(); const u0 = db.users[user]; if (!u0) return; const r = u0.role;
+  if (Object.keys(db.users).length !== nbU) fillTo();
+  const isD = m => m.to === user || (m.to === '@profs' && r === 'prof') || (m.to === '@owners' && r === 'owner') || (m.to === '@eleves' && r === 'eleve');
+  const L = db.messages.filter(m => (m.f === user || isD(m) || r === 'owner') && !(m.del && m.del[user])).sort((a, b) => b.t - a.t).slice(0, 30);
+  const nl = m => isD(m) && m.f !== user && !(m.lu && m.lu[user]), nb = L.filter(nl).length;
+  $('msgBadge').textContent = nb ? nb + " non lu" + (nb > 1 ? "s" : "") : "";
+  $('msgList').innerHTML = L.length ? L.map(m => {
+    const d = `data-id="${esc(m.id)}"`, qui = m.f === user ? '➡️ à ' + esc(nomDest(m.to)) : '⬅️ de ' + esc(m.f) + (m.to !== user ? ' (à ' + esc(nomDest(m.to)) + ')' : '');
+    return `<div class="item"><div ${d} onclick="toggleMsg(this.dataset.id)" style="cursor:pointer;${nl(m) ? 'font-weight:bold' : ''}">${nl(m) ? '🔵 ' : ''}${qui} — ${esc(m.s)} <small>${heure(m.t)}</small></div>` +
+      (ouverts.has(m.id) ? `<pre style="white-space:pre-wrap;font-family:inherit;background:#fff;border:1px solid #9cbdea;border-radius:5px;padding:8px">${esc(m.b)}</pre><button class="mini blue" ${d} onclick="repondre(this.dataset.id)">Répondre</button><button class="mini red" ${d} onclick="supprMsg(this.dataset.id)">Supprimer</button>` : '') + '</div>';
+  }).join('') : "Aucun message.";
+}
+function toggleMsg(id){
+  if (ouverts.has(id)) ouverts.delete(id); else { ouverts.add(id); mut(() => { const m = db.messages.find(x => x.id === id); if (m) { m.lu = m.lu || {}; m.lu[user] = 1; } }); }
+  renderMsgs();
+}
+function repondre(id){
+  const m = db.messages.find(x => x.id === id); if (!m) return;
+  $('mTo').value = m.f === user ? m.to : m.f; $('mSub').value = /^Re:/.test(m.s) ? m.s : "Re: " + m.s; $('mBody').focus();
+}
+function supprMsg(id){
+  mut(() => {
+    if (db.users[user].role === 'owner') db.messages = db.messages.filter(x => x.id !== id);
+    else { const m = db.messages.find(x => x.id === id); if (m) { m.del = m.del || {}; m.del[user] = 1; } }
+  });
+  renderMsgs();
+}
+window.addEventListener('storage', e => { if (e.key === KEY && user) { renderMsgs(); majBandeau(); } });
+setInterval(() => {
+  if (!user) return;
+  db = load(); const u = db.users[user];
+  if (!u || u.bloque || (db.settings.maintenance && u.role === 'eleve')) { logout(); msg($('authMsg'), "Session terminée (compte bloqué, supprimé ou maintenance).", "erreur"); return; }
+  majBandeau(); renderMsgs(); if (!isProf && !isOwner) appliquerMode();
+}, 2000);
+
+/* ---------- Démarrage ---------- */
+remplirListes();
+['valeur','uniteDepart','uniteArrivee'].forEach(id => ['input','change'].forEach(ev => $(id).addEventListener(ev, () => {
+  fini = false; tentative = 0; t0 = Date.now(); $('cours').hidden = true; $('resetBtn').style.display = 'none'; setActif(true);
+})));
+$('reponse').addEventListener('keydown', e => { if (e.key === 'Enter') verifier(); });
+['aid','apw','acode'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') authGo(); }));
+setInterval(() => pull(), 2500);
+(async () => {
+  if (!sb) return msg($('authMsg'), "⚠️ Supabase n'est pas configuré : ouvre le fichier et renseigne SUPABASE_URL et SUPABASE_KEY (voir supabase-setup.sql).", "avert");
+  try { const {data} = await sb.auth.getSession(); if (data.session) await ouvrirSession(data.session.user.id); } catch (e) {}
+})();
+</script>
+</body>
+</html>
